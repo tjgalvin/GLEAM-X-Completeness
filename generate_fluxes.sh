@@ -2,17 +2,37 @@
 
 # Prepare flux files for inject_sources.sh
 
+if [[ -z ${MYCODE} ]]
+then
+    echo "Error: The MYCODE variable is missing. Exiting."
+    exit 1
+fi
+
+module load singularity
+echo "${SINGULARITY_BINDPATH}"
+export containerImage=/astro/mwasci/tgalvin/gleamx_testing_small.img
+
 # Read input parameters
-if [[ $1 ]] && [[ $2 ]] && [[ $3 ]]; then
+if [[ $1 ]] && [[ $2 ]] && [[ $3 ]] && [[ $4 ]] && [[ $5 ]] && [[ $6 ]]; then
+    
+    # Number of random source positions to simulate
+    nsrc=$(echo $1 | awk -F"=" '{print $NF}')
+    # Region of sky - enter ra_min, ra_max, dec_min, dec_max, in deg.
+    # For example, for 60 < RA < 300 enter: 60,300,-90,90
+    # For RA < 60 or RA > 300, and -40 < Dec < -10, enter: 300,60,-40,-10
+    region=$(echo $2 | awk -F"=" '{print $NF}')
+    # Minimum separation between simulated sources, in arcmin
+    sep_min=$(echo $3 | awk -F"=" '{print $NF}')
+    
     # Fluxes at which to measure completeness. Enter flux_min, flux_max, flux_interval, in Jy and in log space.
     # (e.g. for 21 equally-spaced fluxes in log space between 10 mJy and 1 Jy, enter -2,0,0.1)
-    flux=$(echo $1 | awk -F"=" '{print $NF}')
+    flux=$(echo $4 | awk -F"=" '{print $NF}')
     # Number of files in which to divide the fluxes
-    nfiles=$(echo $2 | awk -F"=" '{print $NF}')
+    nfiles=$(echo $5 | awk -F"=" '{print $NF}')
     # Output directory
-    output_dir=$(echo $3 | awk -F"=" '{print $NF}')
+    output_dir=$(echo $6 | awk -F"=" '{print $NF}')
 else
-    echo "Give me: flux nfiles output_dir"
+    echo "Give me: nsrc region sep_min flux nfiles output_dir"
     exit 1
 fi
 
@@ -41,21 +61,47 @@ if [ $(echo "$nfiles > $nflux"|bc) -eq 1 ]; then
     exit 1
 fi
 
-# Create output directory
-if [ -e $output_dir ]; then
-    echo "Error: Output directory $output_dir already exists. Aborting."
+pos_outdir="${output_dir}/source_pos"
+flux_outdir="${output_dir}/fluxes"
+
+if [[ -e "${pos_outdir}" ]]; then
+    echo "Error: Output directory ${pos_outdir} already exists. Aborting."
     exit 1
-else
-    mkdir $output_dir
-    cd $output_dir || exit 1
 fi
 
+if [[ -e "${flux_outdir}" ]]; then
+    echo "Error: Output directory ${flux_outdir} already exists. Aborting."
+    exit 1
+fi
+
+mkdir "${output_dir}"
+cd "${output_dir}" || exit 1
+
 # Write input parameters to file for record
-cat >> input_parameters_generate_fluxes.txt <<EOPAR
+cat >> input_parameters_generate_sources.txt <<EOPAR
+nsrc = $nsrc
+region = $region
+sep_min = $sep_min
 flux = $flux
 nfiles = $nfiles
 output_dir = $output_dir
+pos_outputdir = $pos_outdir
+flux_outputdir = $flux_outdir
 EOPAR
+
+mkdir "${pos_outdir}"
+cd "${pos_outdir}" || exit 1
+
+# Run Python script to generate RA and Dec positions
+singularity exec $containerImage \
+"$MYCODE/generate_pos.py" \
+--nsrc="$nsrc" \
+--region="$region" \
+--sep_min="$sep_min" \
+source_pos.txt
+
+mkdir "${pos_outdir}"
+cd "${pos_outdir}" || exit 1
 
 # Generate flux files
 quotient=$((nflux/nfiles))

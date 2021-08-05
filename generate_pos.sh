@@ -10,6 +10,9 @@
 #SBATCH --error=/astro/mwasci/tfranzen/generate_pos.e%A
 #SBATCH --export=NONE
 
+echo "Reminder on this branch this is not needed. Exiting. "
+exit 1
+
 module load singularity
 echo $SINGULARITY_BINDPATH
 export containerImage=/astro/mwasci/tgalvin/gleamx_testing_small.img
