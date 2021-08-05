@@ -3,8 +3,9 @@
 # Generates a list of random RA and Dec positions in specified region of sky
 
 import numpy as np
-from optparse import OptionParser
-from astropy.coordinates import SkyCoord
+from argparse import ArgumentParser
+from astropy.coordinates import SkyCoord, match_coordinates_sky
+import astropy.units as u
 
 ### gcd() was written by Paul Hancock
 # The following functions are explained at http://www.movable-type.co.uk/scripts/latlong.html
@@ -31,36 +32,44 @@ def gcd(ra1, dec1, ra2, dec2):
 
 # Read input parameters
 usage = "Usage: %prog [options] <output_file>"
-parser = OptionParser(usage=usage)
-parser.add_option(
+parser = ArgumentParser(usage=usage)
+parser.add_argument(
+    "outfile", type=str, help="Output path to write the source positions to"
+)
+parser.add_argument(
     "--nsrc",
-    type="int",
-    dest="nsrc",
+    type=int,
     default=1000,
     help="Number of random source positions to simulate [default=%default]",
 )
-parser.add_option(
+parser.add_argument(
     "--region",
-    type="string",
-    dest="region",
+    type=str,
     default="0,360,-90,90",
     help="Region of sky. Enter ra_min, ra_max, dec_min, "
     "dec_max, in deg. For example, for 60 < RA < 300 enter: 60,300,-90,90. For RA < 60 or RA > 300, and -40 < Dec < -10, enter: "
     "300,60,-40,-10. [default=%default]",
 )
-parser.add_option(
-    "--sep_min",
-    type="float",
-    dest="sep_min",
+parser.add_argument(
+    "--sep-min",
+    type=float,
     default=0.0,
     help="Minimum separation between simulated sources, in arcmin "
     "[default=%default]",
 )
-(options, args) = parser.parse_args()
-output_file = args[0]
-nsrc = options.nsrc
-region = options.region
-sep_min = options.sep_min
+parser.add_argument(
+    "--max-attempts",
+    type=int,
+    default=50,
+    help="Maximum number of passes to make over generating valid source positions before failing. ",
+)
+
+args = parser.parse_args()
+output_file = args.outfile
+nsrc = args.nsrc
+region = args.region
+sep_min = args.sep_min
+max_attempts = args.max_attempts
 
 # Read region parameter
 ra_min = float(region.split(",")[0])
@@ -91,47 +100,40 @@ dec_max = np.radians(dec_max)
 # Convert sep_min from arcmin to deg
 sep_min = sep_min / 60.0
 
-i = 0
-n = 0
-ra_store = []
-dec_store = []
-step = 1.0
-f = step
-while i < nsrc:
-    n = n + 1
-    # Draw random position inside specified region
-    ra = np.random.uniform(low=ra_min, high=ra_max)
-    if ra >= 360.0:
-        ra = ra - 360.0
-    r = np.random.uniform(low=0.0, high=1.0)
-    dec = np.arcsin((np.sin(dec_max) - np.sin(dec_min)) * r + np.sin(dec_min))
-    dec = np.degrees(dec)  # Convert from rad to deg
-    # Reject position if it lies within sep_min deg from any other drawn position
-    accept = True
-    if sep_min > 0:
-        for j in range(0, i):
-            if np.absolute(dec - dec_store[j]) < sep_min:
-                sep = gcd(ra, dec, ra_store[j], dec_store[j])
-                if sep < sep_min:
-                    accept = False
-                    break
-    if accept:
-        ra_store.append(ra)
-        dec_store.append(dec)
-        i = i + 1
-    if i / nsrc >= f / 100:
-        print("%.0f" % f, "% complete")
-        f = f + step
-    if n > 10 * nsrc:
-        print(
-            "Too many sources are being rejected as a result of the minimum separation constraint.",
-            "\nReduce sep_min parameter. Aborting.",
-        )
-        exit()
+ras = np.zeros(nsrc)
+decs = np.zeros(nsrc)
+mask = ras == 0
+min_sep = args.sep_min * u.arcmin
+
+c = 0
+success = False
+while (success is False) and (c < max_attempts):
+    ras[mask] = np.random.uniform(low=ra_min, high=ra_max, size=np.sum(mask))
+    ras = np.where(ras >= 360, ras - 360, ras)
+
+    r = np.random.uniform(low=0.0, high=1.0, size=np.sum(mask))
+    decs[mask] = np.rad2deg(
+        np.arcsin((np.sin(dec_max) - np.sin(dec_min)) * r + np.sin(dec_min))
+    )
+
+    pos = SkyCoord(ras * u.deg, decs * u.deg)
+    seps = match_coordinates_sky(pos, pos, nthneighbor=2)
+
+    mask = seps[1] < min_sep
+    print(f"Pass {c+1} : Accepted {np.sum(~mask)}")
+    if np.all(~mask):
+        success = True
+
+    c += 1
+
+
+if not success:
+    print("Injection did not converge. Was --sep-min to large?")
+    exit(1)
 
 # Print simulated source positions to file
 with open(output_file, "w") as f:
     print("# ra dec", file=f)
     for i in range(0, nsrc):
-        print("%.6f" % ra_store[i], "%.6f" % dec_store[i], file=f)
+        print("%.6f" % ras[i], "%.6f" % decs[i], file=f)
 
