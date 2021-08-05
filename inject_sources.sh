@@ -17,7 +17,7 @@ export containerImage=/astro/mwasci/tgalvin/gleamx_testing_small.img
 start_time=$(date +%s)
 
 # Read input parameters
-if [[ $1 ]] && [[ $2 ]] && [[ $3 ]] && [[ $4 ]] && [[ $5 ]]; then
+if [[ $1 ]] && [[ $2 ]] && [[ $3 ]] && [[ $4 ]] && [[ $5 ]] && [[ $6 ]] ; then
     # Directory containing GLEAM-X mosaics (wide-band image used for source detection + rms, bkg and PSF maps)
     # Naming should be XG_wideband.fits, XG_wideband_rms.fits, XG_wideband_bkg.fits and XG_wideband_projpsf_psf.fits
     input_map_dir=$(echo $1 | awk -F"=" '{print $NF}')
@@ -29,8 +29,10 @@ if [[ $1 ]] && [[ $2 ]] && [[ $3 ]] && [[ $4 ]] && [[ $5 ]]; then
     sigma=$(echo $4 | awk -F"=" '{print $NF}')
     # Output directory
     output_dir=$(echo $5 | awk -F"=" '{print $NF}')
+    # Base file names for images
+    imageset_name=$(echo $6 | awk -F"=" '{print $NF}')
 else
-    echo "Give me: input_map_dir input_sources flux_dir sigma output_dir"
+    echo "Give me: input_map_dir input_sources flux_dir sigma output_dir imageset_name"
     exit 1
 fi
 
@@ -38,17 +40,17 @@ fi
 flux_list=$flux_dir/flux_list${SLURM_ARRAY_TASK_ID}.txt
 
 # Create main output directory
-if [ ! -e $output_dir ]; then
-    mkdir $output_dir
+if [ ! -e "${output_dir}" ]; then
+    mkdir "${output_dir}"
 fi
 
 # Create flux output directory
-if [ -e $output_dir/flux${SLURM_ARRAY_TASK_ID} ]; then
+if [ -e "${output_dir}/flux${SLURM_ARRAY_TASK_ID}" ]; then
     echo "Error: Output directory $output_dir/flux${SLURM_ARRAY_TASK_ID} already exists. Aborting."
     exit 1
 else
-    mkdir $output_dir/flux${SLURM_ARRAY_TASK_ID}
-    cd $output_dir/flux${SLURM_ARRAY_TASK_ID} || exit
+    mkdir "${output_dir}/flux${SLURM_ARRAY_TASK_ID}"
+    cd "${output_dir}/flux${SLURM_ARRAY_TASK_ID}" || exit
 fi
 
 # Set other input parameters
@@ -66,6 +68,7 @@ z = $z
 search_rad = $search_rad
 ncpus = $ncpus
 output_dir = $output_dir/flux${SLURM_ARRAY_TASK_ID}
+imageset_name = $imageset_name
 EOPAR
 
 # Read source fluxes to simulate
@@ -79,12 +82,12 @@ while read line; do
 done < $flux_list
 nflux=$i
 
-input_map=$input_map_dir/XG_wideband.fits
-input_map_rms=$input_map_dir/XG_wideband_rms.fits
-input_map_bkg=$input_map_dir/XG_wideband_bkg.fits
-input_map_psf=$input_map_dir/XG_wideband_projpsf_psf.fits
-for file in $input_map $input_map_rms $input_map_bkg $input_map_psf $input_sources; do
-    if [ ! -e $file ]; then
+input_map="${input_map_dir}/${imageset_name}.fits" # Potentially this may miss ddmod.fits
+input_map_rms="${input_map_dir}/${imageset_name}_rms.fits"
+input_map_bkg="${input_map_dir}/${imageset_name}_bkg.fits"
+input_map_psf="${input_map_dir}/${imageset_name}_projpsf_psf.fits"
+for file in "${input_map}" "${input_map_rms}" "${input_map_bkg}" "${input_map_psf}" "${input_sources}"; do
+    if [ ! -e "${file}" ]; then
         echo "Error: $file does not exist. Aborting."
         exit 1
     fi
@@ -114,6 +117,7 @@ aegean \
 --psf=$input_map_psf \
 $input_map
 rm -f aegean_list.txt
+
 # Select RA and Dec columns in Aegean list of real sources; add type=1 col to indicate that these are real sources
 singularity exec $containerImage stilts tpipe \
 ifmt=votable \
@@ -123,7 +127,9 @@ omode=out \
 out=t \
 cmd='addcol "type" 1' \
 cmd='keepcols "ra dec type"'
+
 rm -f aegean_list_comp.vot
+
 # Select RA and Dec columns in list of simulated sources; add type=0 col to indicate these are simulated sources
 singularity exec $containerImage stilts tpipe \
 ifmt=ascii \
@@ -139,6 +145,7 @@ ifmt=ascii \
 in=t \
 in=t2 \
 out=real_and_sim_list.txt
+
 rm -f t t2
 
 # ----------------------------------------------------------------
@@ -153,11 +160,11 @@ for ((i=1; i<=($nflux); i++ )); do
     singularity exec $containerImage \
     $MYCODE/calc_r_ratio_cmp.py \
     --z=$z \
-    --flux=$s_lin \
-    $input_sources \
-    $input_map \
-    $input_map_psf \
-    source_pos_flux${s}.txt
+    --flux="$s_lin" \
+    "$input_sources" \
+    "$input_map" \
+    "$input_map_psf" \
+    "source_pos_flux${s}.txt"
     
     # Convert source position file to Aegean format (votable)
     # Since the map in which we will inject the point sources has already been rescaled to account for ionospheric smearing,
@@ -202,9 +209,10 @@ for ((i=1; i<=($nflux); i++ )); do
     singularity exec $containerImage \
     AeRes \
     -c aegean_source_list.vot \
-    -f $input_map \
-    -r sim_and_real_map_flux${s}.fits \
+    -f "$input_map" \
+    -r "sim_and_real_map_flux${s}.fits" \
     -m sim_map.fits
+    
     rm -f sim_map.fits aegean_source_list.vot
     
     # Run Aegean on sim_and_real_map.fits (this is the real image + simulated sources); use existing rms and background images
@@ -213,12 +221,13 @@ for ((i=1; i<=($nflux); i++ )); do
     --cores=$ncpus \
     --out=aegean_SIM_list.txt \
     --table=aegean_SIM_list.vot \
-    --noise=$input_map_rms \
-    --background=$input_map_bkg \
-    --seedclip=$sigma \
+    --noise="$input_map_rms" \
+    --background="$input_map_bkg" \
+    --seedclip="$sigma" \
     --floodclip=4 \
     --maxsummits=5 \
-    --psf=$input_map_psf sim_and_real_map_flux${s}.fits
+    --psf="$input_map_psf" "sim_and_real_map_flux${s}.fits"
+    
     rm -f aegean_SIM_list.txt
     rm -f sim_and_real_map_flux${s}.fits
     
@@ -236,6 +245,7 @@ for ((i=1; i<=($nflux); i++ )); do
     ifmt2=ascii \
     find=best \
     join=1and2
+    
     rm -f aegean_SIM_list_comp.vot
     
     # Select sources in match_list.txt that have type=0
@@ -252,6 +262,7 @@ for ((i=1; i<=($nflux); i++ )); do
     cmd='addcol -after "dec_2" "dec_sim" dec_2' \
     cmd='addcol "flux_sim" '$s_lin'' \
     cmd='delcols "ra_1 dec_1 ra_2 dec_2 type"'
+    
     rm -f match_list.txt
     
 done
