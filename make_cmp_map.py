@@ -25,7 +25,7 @@ def read_catalogue(input_catalogue):
     return ra, dec
 
 
-def count_sources_2(ref_pos, comp_pos, sep):
+def count_sources(ref_pos, comp_pos, sep):
     mask = ref_pos.separation(comp_pos) <= (sep * u.degree)
 
     return np.sum(mask)
@@ -138,7 +138,6 @@ ninj = len(ra_inj)
 # Read FITS catalogues with detected simulated sources
 ra_det = []
 dec_det = []
-print(sdim)
 for i in range(0, sdim):
     f = detected_sources + "/flux*/det_source_list_flux" + str("%.4f" % s[i]) + ".fits"
     input_catalogue = glob.glob(f)
@@ -148,13 +147,11 @@ for i in range(0, sdim):
     elif len(input_catalogue) > 1:
         print('Error: multiple matches found for FITS catalogue "' + f + '". Aborting.')
         exit()
-    print(input_catalogue[0])
+
+    print(f"Found catalogue: {input_catalogue[0]}")
     ra, dec = read_catalogue(input_catalogue[0])
     ra_det.append(ra)
     dec_det.append(dec)
-
-ra_det = np.array(ra_det)
-dec_det = np.array(dec_det)
 
 # Calculate completeness as a function of flux density and print results to file
 cmp = []
@@ -236,10 +233,11 @@ if args.template_map:
                     ra_max < ra_min and (ra >= ra_min or ra <= ra_max)
                 ):
                     ref_pos = SkyCoord(ra * u.deg, dec * u.deg)
-                    ninj_rad = count_sources_2(ref_pos, sky_inj, args.rad)
+                    ninj_rad = count_sources(ref_pos, sky_inj, args.rad)
                     for i in range(0, sdim):
-                        ndet_rad = count_sources_2(ref_pos, sky_det[i], args.rad)
+                        ndet_rad = count_sources(ref_pos, sky_det[i], args.rad)
                         cmp_cube[i, j, k] = ndet_rad / ninj_rad * 100.0
+
                     n = n + 1
                     p = (n / npix) * 100
                     if p >= f:
