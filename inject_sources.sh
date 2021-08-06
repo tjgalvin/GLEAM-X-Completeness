@@ -1,5 +1,4 @@
-#!/bin/bash -l
-
+#!/bin/bash
 # Inject artificial sources into wide-band image used for source detection
 
 start_time=$(date +%s)
