@@ -54,16 +54,21 @@ $flux \
 $nfiles \
 $outdir
 
-exit 0
+
+if [[ $? -ne 0 ]]
+then
+    echo "Completeness simulation set up failed. Aborting."
+    exit 1
+fi
 
 # We will be blocking until we are finished
-echo srun \
---array=1-$nfiles \
---time:24:00:00 \
---ntasks-per-node=$NCPUS \
---export=ALL \
--o="${outdir}/inject_source.o%A" \
--e="${outdir}/inject_source.e%A" \
+sbatch \
+--array 1-$nfiles \
+--time 4:00:00 \
+--ntasks-per-node $NCPUS \
+--export ALL \
+-o "${outdir}/inject_source.o%A_a" \
+-e "${outdir}/inject_source.e%A_a" \
 "$MYCODE/inject_sources.sh" \
 input_map_dir="${GLEAMX}/input_images" \
 input_sources="${GLEAMX}/source_pos/source_pos.txt" \
