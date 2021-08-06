@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 # A simple helper script to string together the completeness tasks that need to be run.
 
