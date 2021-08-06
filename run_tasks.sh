@@ -8,16 +8,17 @@ region=75,210,-43,-13
 flux=-3,-0.5,0.1
 nfiles=6
 sep_min=5
-outdir=/replace/me
+outdir=./test_comp
 imageset='XG_170-231MHz'
 
-imageset_dir=/replace/me/with/images
+imageset_dir=/home/tim/Documents/Packages/GLEAM-X_Completness/test/input_images
 
 export GLEAMX="${outdir}"
-export MYCODE=
+export MYCODE=/home/tim/Documents/Packages/GLEAM-X_Completness
 export NCPUS=38
-export CONTAINER=/replace/me
+export CONTAINER=/home/tim/Documents/Packages/GLEAM-X_Completness/test/gleamx_testing_small.img
 
+# set -x
 
 if [[ -z ${MYCODE} ]]
 then
@@ -31,19 +32,19 @@ then
     mkdir -p "${outdir}"
 fi
 
-#TODO: See how well this works with symlinks. Need to be sure the container can follow them.
-# for suffix in "" "_bkg" "_rms" "_projpsf_psf"
-# do
-#     if [[ -e "${imageset_dir}/${imageset}${suffix}.fits" ]]
-#     then
-#         cp -v "${imageset_dir}/${imageset}${suffix}.fits" "${GLEAMX}/inputimages"
-#     else
-#         echo "Could not find ${imageset_dir}/${imageset}${suffix}.fits. Exiting. "
-#         return 1
-#     fi
-# done
+mkdir "${GLEAMX}/input_images"
 
-set -x
+#TODO: See how well this works with symlinks. Need to be sure the container can follow them.
+for suffix in "" "_bkg" "_rms" "_projpsf_psf"
+do
+    if [[ -e "${imageset_dir}/${imageset}${suffix}.fits" ]]
+    then
+        cp -v "${imageset_dir}/${imageset}${suffix}.fits" "${GLEAMX}/input_images"
+    else
+        echo "Could not find ${imageset_dir}/${imageset}${suffix}.fits. Exiting. "
+        exit 1
+    fi
+done
 
 "$MYCODE"/generate_fluxes.sh \
 $nsrc \
@@ -52,6 +53,8 @@ $sep_min \
 $flux \
 $nfiles \
 $outdir
+
+exit 0
 
 # We will be blocking until we are finished
 echo srun \
