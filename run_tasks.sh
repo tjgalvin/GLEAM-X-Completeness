@@ -62,29 +62,38 @@ then
 fi
 
 # We will be blocking until we are finished
-sbatch \
---array 1-$nfiles \
---time 4:00:00 \
---ntasks-per-node $NCPUS \
---export ALL \
--o "${outdir}/inject_source.o%A_a" \
--e "${outdir}/inject_source.e%A_a" \
-"$MYCODE/inject_sources.sh" \
-input_map_dir="${GLEAMX}/input_images" \
-input_sources="${GLEAMX}/source_pos/source_pos.txt" \
-flux_dir="${GLEAMX}/fluxes" \
-sigma=4.0 \
-output_dir="${GLEAMX}/inject" \
-imageset_name="${imageset}"
+msg=$(sbatch \
+    --array 1-$nfiles \
+    --time 4:00:00 \
+    --ntasks-per-node $NCPUS \
+    --export ALL \
+    -o "${outdir}/inject_source.o%A_a" \
+    -e "${outdir}/inject_source.e%A_a" \
+    "$MYCODE/inject_sources.sh" \
+    input_map_dir="${GLEAMX}/input_images" \
+    input_sources="${GLEAMX}/source_pos/source_pos.txt" \
+    flux_dir="${GLEAMX}/fluxes" \
+    sigma=4.0 \
+    output_dir="${GLEAMX}/inject" \
+imageset_name="${imageset}")
 
-echo "$MYCODE"/make_cmp_map.sh \
-injected_sources="${GLEAMX}/source_pos/source_pos.txt" \
-detected_sources="${GLEAMX}/inject" \
-flux="$flux" \
-template_map="${GLEAMX}/input_images/XG_wideband_projpsf_psf.fits" \
-region="${region}" \
-rad=6 \
-output_dir="${GLEAMX}/results"
+echo "$msg"
+id=$(echo "$msg" | cut -d ' ' -f3)
 
+msg=$(sbatch \
+    --time 1:00:00 \
+    --dependency "afterok:$id" \
+    --ntasks-per-node $NCPUS \
+    --export ALL \
+    -o "${outdir}/cmp_map.o%A" \
+    -e "${outdir}/cmp_map.e%A" \
+    "$MYCODE"/make_cmp_map.sh \
+    injected_sources="${GLEAMX}/source_pos/source_pos.txt" \
+    detected_sources="${GLEAMX}/inject" \
+    flux="$flux" \
+    template_map="${GLEAMX}/input_images/XG_wideband_projpsf_psf.fits" \
+    region="${region}" \
+    rad=6 \
+output_dir="${GLEAMX}/results")
 
-
+echo "$msg"
