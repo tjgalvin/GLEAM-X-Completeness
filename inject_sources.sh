@@ -2,18 +2,6 @@
 
 # Inject artificial sources into wide-band image used for source detection
 
-#SBATCH --account=pawsey0272
-#SBATCH --partition=workq
-#SBATCH --clusters=magnus
-#SBATCH --nodes=1
-#SBATCH --output=/astro/mwasci/tfranzen/inject_sources.o%A_%a
-#SBATCH --error=/astro/mwasci/tfranzen/inject_sources.e%A_%a
-#SBATCH --export=NONE
-
-module load singularity
-echo $SINGULARITY_BINDPATH
-export containerImage=/astro/mwasci/tgalvin/gleamx_testing_small.img
-
 start_time=$(date +%s)
 
 # Read input parameters
