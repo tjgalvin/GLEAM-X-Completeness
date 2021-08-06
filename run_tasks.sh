@@ -32,16 +32,18 @@ then
 fi
 
 #TODO: See how well this works with symlinks. Need to be sure the container can follow them.
-for suffix in "" "_bkg" "_rms" "_projpsf_psf"
-do
-    if [[ -e "${imageset_dir}/${imageset}${suffix}.fits" ]]
-    then
-        cp -v "${imageset_dir}/${imageset}${suffix}.fits" "${GLEAMX}/inputimages"
-    else
-        echo "Could not find ${imageset_dir}/${imageset}${suffix}.fits. Exiting. "
-        return 1
-    fi
-done
+# for suffix in "" "_bkg" "_rms" "_projpsf_psf"
+# do
+#     if [[ -e "${imageset_dir}/${imageset}${suffix}.fits" ]]
+#     then
+#         cp -v "${imageset_dir}/${imageset}${suffix}.fits" "${GLEAMX}/inputimages"
+#     else
+#         echo "Could not find ${imageset_dir}/${imageset}${suffix}.fits. Exiting. "
+#         return 1
+#     fi
+# done
+
+set -x
 
 "$MYCODE"/generate_fluxes.sh \
 $nsrc \
@@ -52,7 +54,7 @@ $nfiles \
 $outdir
 
 # We will be blocking until we are finished
-srun \
+echo srun \
 --array=1-$nfiles \
 --time:24:00:00 \
 --ntasks-per-node=$NCPUS \
@@ -67,7 +69,7 @@ sigma=4.0 \
 output_dir="${GLEAMX}/inject" \
 imageset_name="${imageset}"
 
-"$MYCODE"/make_cmp_map.sh \
+echo "$MYCODE"/make_cmp_map.sh \
 injected_sources="${GLEAMX}/source_pos/source_pos.txt" \
 detected_sources="${GLEAMX}/inject" \
 flux="$flux" \

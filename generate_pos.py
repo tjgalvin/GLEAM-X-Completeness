@@ -31,8 +31,8 @@ def gcd(ra1, dec1, ra2, dec2):
 
 
 # Read input parameters
-usage = "Usage: %prog [options] <output_file>"
-parser = ArgumentParser(usage=usage)
+description = "Generates a set os source positions with a minimum separation"
+parser = ArgumentParser(description=description)
 parser.add_argument(
     "outfile", type=str, help="Output path to write the source positions to"
 )

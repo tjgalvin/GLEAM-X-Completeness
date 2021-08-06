@@ -2,15 +2,16 @@
 
 # Prepare flux files for inject_sources.sh
 
+set -x
+
 if [[ -z ${MYCODE} ]]
 then
     echo "Error: The MYCODE variable is missing. Exiting."
     exit 1
 fi
 
-module load singularity
+# module load singularity
 echo "${SINGULARITY_BINDPATH}"
-export containerImage=/astro/mwasci/tgalvin/gleamx_testing_small.img
 
 # Read input parameters
 if [[ $1 ]] && [[ $2 ]] && [[ $3 ]] && [[ $4 ]] && [[ $5 ]] && [[ $6 ]]; then
@@ -74,11 +75,16 @@ if [[ -e "${flux_outdir}" ]]; then
     exit 1
 fi
 
-mkdir "${output_dir}"
-cd "${output_dir}" || exit 1
+if [[ ! -e "${output_dir}" ]]
+then
+    echo "Creating ${output_dir}"
+    mkdir "${output_dir}"
+fi
+
+basedir=$(pwd)
 
 # Write input parameters to file for record
-cat >> input_parameters_generate_sources.txt <<EOPAR
+cat >> "${output_dir}"/input_parameters_generate_sources.txt <<EOPAR
 nsrc = $nsrc
 region = $region
 sep_min = $sep_min
@@ -93,15 +99,20 @@ mkdir "${pos_outdir}"
 cd "${pos_outdir}" || exit 1
 
 # Run Python script to generate RA and Dec positions
-singularity exec $containerImage \
+singularity exec \
+-B "$MYCODE" \
+"$CONTAINER" \
 "$MYCODE/generate_pos.py" \
 --nsrc="$nsrc" \
 --region="$region" \
---sep_min="$sep_min" \
+--sep-min="$sep_min" \
 source_pos.txt
 
-mkdir "${pos_outdir}"
-cd "${pos_outdir}" || exit 1
+cd "${basedir}" || exit 1
+mkdir "${flux_outdir}"
+cd "${flux_outdir}" || exit 1
+
+exit 0
 
 # Generate flux files
 quotient=$((nflux/nfiles))
