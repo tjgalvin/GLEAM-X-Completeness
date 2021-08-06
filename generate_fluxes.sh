@@ -2,8 +2,6 @@
 
 # Prepare flux files for inject_sources.sh
 
-set -x
-
 if [[ -z ${MYCODE} ]]
 then
     echo "Error: The MYCODE variable is missing. Exiting."
@@ -112,8 +110,6 @@ cd "${basedir}" || exit 1
 mkdir "${flux_outdir}"
 cd "${flux_outdir}" || exit 1
 
-exit 0
-
 # Generate flux files
 quotient=$((nflux/nfiles))
 remainder=$((nflux%nfiles))
@@ -125,6 +121,7 @@ for ((i=1; i<=($nfiles); i++ )); do
     else
         n=$quotient
     fi
+    echo "Writing flux_list${i}.txt"
     for ((j=1; j<=($n); j++ )); do
         (( k++ ))
         printf "%0.4f\n" ${s[$k]} >> flux_list${i}.txt

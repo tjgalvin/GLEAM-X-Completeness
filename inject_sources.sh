@@ -104,22 +104,26 @@ pow(){
 # The list of real sources is obtained by running Aegean on the image.
 
 # Run Aegean on real image
-singularity exec $containerImage \
+singularity exec \
+"$CONTAINER" \
 aegean \
 --cores=$ncpus \
 --out=aegean_list.txt \
 --table=aegean_list.vot \
---noise=$input_map_rms \
---background=$input_map_bkg \
---seedclip=$sigma \
+--noise="$input_map_rms" \
+--background="$input_map_bkg" \
+--seedclip="$sigma" \
 --floodclip=4 \
 --maxsummits=5 \
---psf=$input_map_psf \
-$input_map
+--psf="$input_map_psf" \
+"$input_map"
+
 rm -f aegean_list.txt
 
 # Select RA and Dec columns in Aegean list of real sources; add type=1 col to indicate that these are real sources
-singularity exec $containerImage stilts tpipe \
+singularity exec \
+"$CONTAINER" \
+stilts tpipe \
 ifmt=votable \
 in=aegean_list_comp.vot \
 ofmt=ascii \
@@ -131,16 +135,21 @@ cmd='keepcols "ra dec type"'
 rm -f aegean_list_comp.vot
 
 # Select RA and Dec columns in list of simulated sources; add type=0 col to indicate these are simulated sources
-singularity exec $containerImage stilts tpipe \
+singularity exec \
+"$CONTAINER" \
+stilts tpipe \
 ifmt=ascii \
-in=$input_sources \
+in="$input_sources" \
 ofmt=ascii \
 omode=out \
 out=t2 \
 cmd='addcol "type" 0' \
 cmd='keepcols "ra dec type"'
+
 # Concatenate real and simulated source lists
-singularity exec $containerImage stilts tcat \
+singularity exec \
+"$CONTAINER" \
+stilts tcat \
 ifmt=ascii \
 in=t \
 in=t2 \
@@ -157,8 +166,9 @@ for ((i=1; i<=($nflux); i++ )); do
     s_lin=$( pow 10 $s ) # convert flux to linear space
     
     # Get PSF size and blurring factor at the location of each simulated source
-    singularity exec $containerImage \
-    $MYCODE/calc_r_ratio_cmp.py \
+    singularity exec \
+    "$CONTAINER" \
+    "$MYCODE/calc_r_ratio_cmp.py" \
     --z=$z \
     --flux="$s_lin" \
     "$input_sources" \
@@ -170,7 +180,9 @@ for ((i=1; i<=($nflux); i++ )); do
     # Since the map in which we will inject the point sources has already been rescaled to account for ionospheric smearing,
     # the peak fluxes of the injected sources should NOT be suppressed by the blurring factor
     # (i.e. the peak fluxes should be equal to the integrated fluxes)
-    singularity exec $containerImage stilts tpipe \
+    singularity exec \
+    "$CONTAINER" \
+    stilts tpipe \
     ifmt=ascii \
     ofmt=votable \
     omode=out \
@@ -206,7 +218,8 @@ for ((i=1; i<=($nflux); i++ )); do
     cmd='delcols "RA Dec S bmaj bmin bpa R"'
     
     # Add simulated sources to real map
-    singularity exec $containerImage \
+    singularity exec \
+    "$CONTAINER" \
     AeRes \
     -c aegean_source_list.vot \
     -f "$input_map" \
@@ -216,7 +229,8 @@ for ((i=1; i<=($nflux); i++ )); do
     rm -f sim_map.fits aegean_source_list.vot
     
     # Run Aegean on sim_and_real_map.fits (this is the real image + simulated sources); use existing rms and background images
-    singularity exec $containerImage \
+    singularity exec \
+    "$CONTAINER" \
     aegean \
     --cores=$ncpus \
     --out=aegean_SIM_list.txt \
@@ -232,7 +246,9 @@ for ((i=1; i<=($nflux); i++ )); do
     rm -f sim_and_real_map_flux${s}.fits
     
     # Match sources detected in the simulated image with the list of real & simulated sources for the image
-    singularity exec $containerImage stilts tskymatch2 \
+    singularity exec \
+    "$CONTAINER" \
+    stilts tskymatch2 \
     in1=aegean_SIM_list_comp.vot \
     in2=real_and_sim_list.txt \
     out=match_list.txt \
@@ -249,7 +265,9 @@ for ((i=1; i<=($nflux); i++ )); do
     rm -f aegean_SIM_list_comp.vot
     
     # Select sources in match_list.txt that have type=0
-    singularity exec $containerImage stilts tpipe \
+    singularity exec \
+    "$CONTAINER" \
+    stilts tpipe \
     ifmt=ascii \
     in=match_list.txt \
     ofmt=fits \
@@ -272,10 +290,5 @@ done
 end_time=$(date +%s)
 duration=$(echo "$end_time-$start_time" | bc -l)
 echo "Total runtime = $duration sec"
-
-# Move output and error files to output directory
-root=/astro/mwasci/$USER/inject_sources
-id=${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}
-mv $root.o${id} $root.e${id} .
 
 exit 0
