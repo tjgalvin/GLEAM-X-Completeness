@@ -231,6 +231,7 @@ for ((i=1; i<=($nflux); i++ )); do
     singularity exec \
     "$CONTAINER" \
     aegean \
+    --progress \
     --cores=$ncpus \
     --out=aegean_SIM_list.txt \
     --table=aegean_SIM_list.vot \
