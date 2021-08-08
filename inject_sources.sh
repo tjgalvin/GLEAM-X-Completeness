@@ -3,6 +3,8 @@
 
 start_time=$(date +%s)
 
+set -x
+
 # Read input parameters
 if [[ $1 ]] && [[ $2 ]] && [[ $3 ]] && [[ $4 ]] && [[ $5 ]] && [[ $6 ]] ; then
     # Directory containing GLEAM-X mosaics (wide-band image used for source detection + rms, bkg and PSF maps)
@@ -43,7 +45,6 @@ fi
 # Set other input parameters
 z=-26.7 # Dec at zenith in deg
 search_rad=75 # Search radius to use when cross-matching sources to measure completeness, in arcsec
-ncpus=48 # number of cores for running Aegean
 
 # Write input parameters to file for record
 cat >> input_parameters_inject_sources.txt <<EOPAR
@@ -115,8 +116,6 @@ else
     cp -v "${input_map_comp}" aegean_list_comp.fits
     aegean_comp=aegean_list_comp.fits
 fi
-
-exit 0
 
 rm -f aegean_list.txt
 
