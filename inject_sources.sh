@@ -5,6 +5,13 @@ start_time=$(date +%s)
 
 set -x
 
+if [[ -z $NCPUS ]]
+then
+    ncpus=$NCPUS
+else
+    ncpus=18
+fi
+
 # Read input parameters
 if [[ $1 ]] && [[ $2 ]] && [[ $3 ]] && [[ $4 ]] && [[ $5 ]] && [[ $6 ]] ; then
     # Directory containing GLEAM-X mosaics (wide-band image used for source detection + rms, bkg and PSF maps)
