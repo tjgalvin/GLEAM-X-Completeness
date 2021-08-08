@@ -5,7 +5,7 @@ start_time=$(date +%s)
 
 set -x
 
-if [[ -z $NCPUS ]]
+if [[ -n $NCPUS ]]
 then
     ncpus=$NCPUS
 else
