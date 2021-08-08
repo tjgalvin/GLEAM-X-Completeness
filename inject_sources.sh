@@ -70,6 +70,7 @@ done < $flux_list
 nflux=$i
 
 input_map="${input_map_dir}/${imageset_name}.fits" # Potentially this may miss ddmod.fits
+input_map_comp="${input_map_dir}/${imageset_name}_psf_comp.fits"
 input_map_rms="${input_map_dir}/${imageset_name}_rms.fits"
 input_map_bkg="${input_map_dir}/${imageset_name}_bkg.fits"
 input_map_psf="${input_map_dir}/${imageset_name}_projpsf_psf.fits"
@@ -90,20 +91,29 @@ pow(){
 # and simulated source in the image. A 3rd col gives the source type (1 for real, 0 for simulated).
 # The list of real sources is obtained by running Aegean on the image.
 
-# Run Aegean on real image
-singularity exec \
-"$CONTAINER" \
-aegean \
---cores=$ncpus \
---out=aegean_list.txt \
---table=aegean_list.vot \
---noise="$input_map_rms" \
---background="$input_map_bkg" \
---seedclip="$sigma" \
---floodclip=4 \
---maxsummits=5 \
---psf="$input_map_psf" \
-"$input_map"
+if [[ ! -e "${input_map_comp}" ]]
+then
+    # Run Aegean on real image
+    singularity exec \
+    "$CONTAINER" \
+    aegean \
+    --cores=$ncpus \
+    --out=aegean_list.txt \
+    --table=aegean_list.vot \
+    --noise="$input_map_rms" \
+    --background="$input_map_bkg" \
+    --seedclip="$sigma" \
+    --floodclip=4 \
+    --maxsummits=5 \
+    --psf="$input_map_psf" \
+    "$input_map"
+else
+    echo "Copying ${input_map_comp} to aegean_list.vot"
+    cp -v "${input_map_comp}" aegean_list_comp.vot
+    
+fi
+
+exit 0
 
 rm -f aegean_list.txt
 
