@@ -119,10 +119,12 @@ then
     "$input_map"
     
     aegean_comp=aegean_list_comp.vot
+    iformat='votable'
 else
     echo "Copying ${input_map_comp} to aegean_list.vot"
     cp -v "${input_map_comp}" aegean_list_comp.fits
     aegean_comp=aegean_list_comp.fits
+    iformat='fits'
 fi
 
 rm -f aegean_list.txt
@@ -131,7 +133,7 @@ rm -f aegean_list.txt
 singularity exec \
 "$CONTAINER" \
 stilts tpipe \
-ifmt=votable \
+ifmt="${iformat}" \
 in="${aegean_comp}" \
 ofmt=ascii \
 omode=out \
