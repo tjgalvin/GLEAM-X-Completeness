@@ -108,10 +108,12 @@ then
     --maxsummits=5 \
     --psf="$input_map_psf" \
     "$input_map"
+    
+    aegean_comp=aegean_list_comp.vot
 else
     echo "Copying ${input_map_comp} to aegean_list.vot"
-    cp -v "${input_map_comp}" aegean_list_comp.vot
-    
+    cp -v "${input_map_comp}" aegean_list_comp.fits
+    aegean_comp=aegean_list_comp.fits
 fi
 
 exit 0
@@ -123,14 +125,14 @@ singularity exec \
 "$CONTAINER" \
 stilts tpipe \
 ifmt=votable \
-in=aegean_list_comp.vot \
+in="${aegean_comp}" \
 ofmt=ascii \
 omode=out \
 out=t \
 cmd='addcol "type" 1' \
 cmd='keepcols "ra dec type"'
 
-rm -f aegean_list_comp.vot
+rm -f "${aegean_comp}"
 
 # Select RA and Dec columns in list of simulated sources; add type=0 col to indicate these are simulated sources
 singularity exec \
