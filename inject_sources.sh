@@ -99,6 +99,7 @@ then
     singularity exec \
     "$CONTAINER" \
     aegean \
+    --progress \
     --cores=$ncpus \
     --out=aegean_list.txt \
     --table=aegean_list.vot \
