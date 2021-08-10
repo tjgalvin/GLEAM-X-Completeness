@@ -53,18 +53,6 @@ fi
 z=-26.7 # Dec at zenith in deg
 search_rad=75 # Search radius to use when cross-matching sources to measure completeness, in arcsec
 
-# Write input parameters to file for record
-cat >> input_parameters_inject_sources.txt <<EOPAR
-input_map_dir = $input_map_dir
-input_sources = $input_sources
-flux_list = $flux_list
-sigma = $sigma
-z = $z
-search_rad = $search_rad
-ncpus = $ncpus
-output_dir = $output_dir/flux${SLURM_ARRAY_TASK_ID}
-imageset_name = $imageset_name
-EOPAR
 
 # Read source fluxes to simulate
 i=0
@@ -89,6 +77,25 @@ for file in "${input_map}" "${input_map_comp}" "${input_map_rms}" "${input_map_b
         exit 1
     fi
 done
+
+# Write input parameters to file for record
+cat >> input_parameters_inject_sources.txt <<EOPAR
+input_map_dir = $input_map_dir
+input_sources = $input_sources
+flux_list = $flux_list
+sigma = $sigma
+z = $z
+search_rad = $search_rad
+ncpus = $ncpus
+output_dir = $output_dir/flux${SLURM_ARRAY_TASK_ID}
+imageset_name = $imageset_name
+input_map = $input_map
+input_map_comp = $input_map_comp
+input_map_rms = $input_map_rms
+input_map_bkg = $input_map_bkg
+input_map_psf = $input_map_psf
+EOPAR
+
 
 # Define power function
 pow(){
