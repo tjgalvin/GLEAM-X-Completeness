@@ -2,18 +2,7 @@
 
 # (1) Calculate overall completeness as a function of flux density
 # (2) Generate completeness map at each flux density
-
-#SBATCH --account=pawsey0272
-#SBATCH --partition=workq
-#SBATCH --clusters=magnus
-#SBATCH --nodes=1
-#SBATCH --output=/astro/mwasci/tfranzen/make_cmp_map.o%A
-#SBATCH --error=/astro/mwasci/tfranzen/make_cmp_map.e%A
-#SBATCH --export=NONE
-
-module load singularity
 echo $SINGULARITY_BINDPATH
-export containerImage=/astro/mwasci/tgalvin/gleamx_testing_small.img
 
 if [[ -z $MYCODE ]]
 then
@@ -68,22 +57,18 @@ output_dir = $output_dir
 EOPAR
 
 # Run Python script
-singularity exec $containerImage \
+singularity exec $CONTAINER \
 "$MYCODE/make_cmp_map.py" \
 --flux="$flux" \
 --region="$region" \
 --rad="$rad" \
---template_map="$template_map" \
+--template-map="$template_map" \
 "$injected_sources" \
 "$detected_sources"
 
 end_time=$(date +%s)
 duration=$(echo "$end_time-$start_time" | bc -l)
 echo "Total runtime = $duration sec"
-
-# Move output and error files to output directory
-root=/astro/mwasci/$USER/make_cmp_map
-mv $root.o${SLURM_JOB_ID} $root.e${SLURM_JOB_ID} .
 
 exit 0
 
